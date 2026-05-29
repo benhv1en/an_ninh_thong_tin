@@ -1,0 +1,10 @@
+## SAU MỖI LẦN PROMPT CỦA TAO, MÀY LƯU Ý:
+- GHI TIẾP (KHÔNG PHẢI GHI LẠI TỪ ĐẦU) NHỮNG THAY ĐỔI VÀO FILE TÊN LÀ `project_definition.md` BẰNG TIẾNG VIỆT THEO CẤU TRÚC NHƯ SAU:
+  - NGÀY, THÁNG, NĂM, GIỜ, PHÚT, GIÂY
+  - NỘI DUNG ĐÃ THAY ĐỔI
+  - VIẾT LẠI TOÀN BỘ PROJECT DEFINITION BAO GỒM:
+    - INPUT DATA
+    - METHODOLOGY
+    - EXPECTED RESULTS
+  - VIẾT LẠI TOÀN BỘ FLOW HỆ THỐNG SAU KHI ĐÃ THAY ĐỔI
+- VIẾT LẠI TOÀN BỘ CÁCH ĐỂ CHẠY CODE VÀO FILE `build.sh`

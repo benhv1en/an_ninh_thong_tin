@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "CashTrack - Quản Lý Chi Tiêu",
+    "slug": "cashtrack",
+    "version": "1.2.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#10b981"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.cashtrack.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#10b981"
+      },
+      "package": "com.cashtrack.app",
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-notifications",
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "b7cf58a4-1b60-4c4f-b3e7-e2bba9542204"
+      }
+    }
+  }
+}
