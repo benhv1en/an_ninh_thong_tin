@@ -14,6 +14,7 @@ Day la du an CashTrack: frontend hien tai la React Native/Expo viet bang TypeScr
 - Neu can sua frontend de ket noi backend, chi sua lop API adapter/service va cac kieu du lieu lien quan den contract. Khong sua UI de "cho tien".
 - Khong revert hoac xoa thay doi san co cua nguoi dung neu khong duoc yeu cau ro.
 - Sau khi sửa code, hãy lưu lại hết tất cả các thay đổi bằng cách CẬP NHẬT VÀO ĐẦU FILE (KHÔNG PHẢI LÀ VIẾT MỚI, cũng không phải là cập nhật vào cuối file) vào file `CHANGELOG.md`. Cập nhật ấy phải ghi rõ: ngày tháng năm giờ phút giây, thứ gì đã thay đổi, lý do mục đích thay đổi thứ ấy,...
+- Trong quá trình testing, nếu test lỗi, bắt buộc phải lưu log báo lỗi của failed tastcase đó bằng cách VIẾT MỚI lại file `FAILED_TESTCASE.md`
 - Khi app chạy lỗi trên điện thoại hoặc chạy lỗi qua Expo Go, bắt buộc phải lưu log báo lỗi của lỗi đó bằng cách VIẾT MỚI lại file `ERROR_LOG.md`
 ## API contract
 

@@ -1,5 +1,22 @@
 # 📋 Changelog
 
+## 11/06/2026 22:02:22 +0700
+
+### Thay đổi
+- Thêm backend C# ASP.NET Core trong `backend/CashTrack.Api`.
+- Thêm `backend/.gitignore` để bỏ qua `bin/`, `obj/` và file SQLite local sinh khi build/chạy.
+- Thêm các entity EF Core code-first theo danh sách đã thiết kế trong `my_entity_list.md`.
+- Thêm `AppDbContext` dùng SQLite, seed danh mục giao dịch và danh sách ngân hàng/ ví điện tử.
+- Dùng `long` cho các giá trị tiền dạng minor units như `AmountMinorUnits`, `MonthlyBudgetMinorUnits`, `LimitMinorUnits`.
+- Dùng `DateTime` với hậu tố `Utc` cho các trường thời gian.
+- Thêm index/unique cho các trường hay truy vấn và đồng bộ như `TransactionDateUtc`, `BankCode`, `ExternalId`, `RawNotificationHash`, `RawTextHash`.
+
+### Lý do
+- Chuẩn bị nền backend code-first để đồng bộ dữ liệu tài chính từ frontend React Native/Expo/TypeScript strict mode.
+- Giữ SQLite làm database mặc định theo quy tắc dự án.
+- Tránh lỗi làm tròn tiền khi lưu bằng số thực bằng cách lưu tiền theo minor units.
+- Chưa tạo migration vì yêu cầu hiện tại chỉ tạo entity và `AppDbContext`.
+
 Tất cả thay đổi đáng chú ý của dự án sẽ được ghi nhận trong file này.
 
 Format dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
