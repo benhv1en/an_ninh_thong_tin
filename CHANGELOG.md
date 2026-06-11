@@ -1,5 +1,25 @@
 # 📋 Changelog
 
+## 12/06/2026 02:38:06 +0700
+
+### Thay đổi
+- Chỉ sửa `src/services/apiClient.ts` để thêm xử lý loading/error cơ bản ở lớp API adapter.
+- Thêm `ApiRequestStatus`, `ApiRequestState<T>` và `ApiCallOptions<T>` với `onStateChange` và `AbortSignal`.
+- Các API method như `health`, `listTransactions`, `createTransaction`, `updateTransaction`, `deleteTransaction`, `listCategories`, `listBanks`, `parseNotification` có thể emit state `loading`, `success`, `error`.
+- Chuẩn hóa lỗi backend ProblemDetails, lỗi network và lỗi abort thành `ApiClientError`.
+- Không sửa Zustand store shape, không sửa màn hình UI, không sửa notification parser.
+- Không sửa backend vì response hiện tại đã khớp đủ với DTO frontend adapter.
+
+### Lý do
+- Giữ frontend behavior là source of truth và gom toàn bộ logic kết nối backend vào API service/adapter.
+- Cho phép caller sau này xử lý loading/error mà không phải tự lặp lại fetch boilerplate hoặc hardcode backend URL trong screen.
+
+### Kiểm tra
+- `npx tsc --noEmit`: không có lỗi từ `src/services/apiClient.ts`; project vẫn còn lỗi TypeScript ngoài phạm vi được phép sửa ở `src/components/common/Card.tsx`, `src/store/authStore.ts`, `src/theme/ThemeContext.tsx`, `src/theme/index.ts`.
+- `dotnet run --project backend/CashTrack.Api/CashTrack.Api.csproj --no-build --urls http://127.0.0.1:5055`: chạy được backend local.
+- `curl -i http://127.0.0.1:5055/health`: trả `200 OK` và `{"status":"ok"}`.
+- `curl -i http://127.0.0.1:5055/api/v1/transactions`: trả `200 OK` với `items` và `nextCursor`.
+
 ## 12/06/2026 02:28:43 +0700
 
 ### Thay đổi

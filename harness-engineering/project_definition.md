@@ -208,3 +208,85 @@
 7. `apiClient.createTransaction()` gửi `CreateTransactionRequest` dạng JSON lên backend và nhận `TransactionDto`.
 8. Nếu backend trả lỗi JSON ProblemDetails, client ném `ApiClientError` kèm `status` và `problem` để lớp gọi xử lý.
 9. UI hiện tại chưa bị thay đổi; việc tích hợp vào screen sẽ là bước riêng nếu cần.
+
+# 12/06/2026 02:38:06 +0700
+
+## Nội dung đã thay đổi
+- Chỉ sửa lớp API service/adapter `src/services/apiClient.ts`.
+- Thêm loading/error state callback qua `ApiCallOptions<T>.onStateChange`.
+- Thêm `AbortSignal` để caller có thể hủy request khi lifecycle UI cần, nhưng không sửa UI hiện tại.
+- Mọi request tiếp tục dùng `EXPO_PUBLIC_API_BASE_URL` và fallback platform đã có.
+- Chuẩn hóa lỗi từ backend ProblemDetails, lỗi network và lỗi abort thành `ApiClientError`.
+- Không đổi Zustand store shape, không sửa screen, không sửa parser thông báo ngân hàng.
+- Không sửa backend vì response `/health` và `/api/v1/transactions` đang khớp DTO frontend adapter.
+
+## Project Definition
+
+### Input Data
+- Frontend React Native/Expo/TypeScript strict mode là source of truth về behavior.
+- Backend ASP.NET Core trả JSON camelCase theo DTO trong `backend/CashTrack.Api/Contracts/ApiContracts.cs`.
+- API base URL lấy từ `EXPO_PUBLIC_API_BASE_URL`, với fallback dev theo platform.
+- API service/adapter là ranh giới duy nhất để nối backend từ frontend.
+
+### Methodology
+- Không hardcode URL trong screen.
+- Không đổi shape của Zustand store hiện tại.
+- Không sửa màn hình UI hoặc parser thông báo ngân hàng khi chỉ nối backend.
+- Nếu backend response lệch frontend expectation thì ưu tiên đề xuất/sửa backend trước khi ép frontend đổi behavior.
+- API adapter chịu trách nhiệm encode query, serialize body, parse JSON response, parse ProblemDetails, emit loading/success/error state và ném `ApiClientError` nhất quán.
+- TypeScript strict mode được dùng để kiểm tra adapter; các lỗi ngoài phạm vi adapter không được sửa trong prompt này vì ràng buộc của người dùng.
+
+### Expected Results
+- `apiClient.health()` gọi được `/health` và có thể emit `loading -> success/error`.
+- `apiClient.listTransactions()` gọi được `/api/v1/transactions` và có thể emit `loading -> success/error`.
+- Caller tương lai có thể dùng `onStateChange` để cập nhật loading/error mà không cần sửa logic fetch trong screen.
+- Backend contract hiện tại vẫn là nguồn response; frontend adapter ánh xạ đúng DTO mà không đổi behavior/store/parser.
+
+## Flow hệ thống sau thay đổi
+1. Frontend gọi method trên `apiClient`.
+2. `apiClient` resolve base URL từ `EXPO_PUBLIC_API_BASE_URL` hoặc fallback theo platform.
+3. `apiClient` emit state `loading` qua `onStateChange` nếu caller cung cấp callback.
+4. `apiClient` gửi request bằng `fetch`, kèm JSON header/body khi cần.
+5. Backend ASP.NET Core xử lý request và trả DTO JSON camelCase hoặc ProblemDetails.
+6. Nếu response thành công, `apiClient` emit `success` kèm data và trả Promise resolve.
+7. Nếu response lỗi hoặc network lỗi, `apiClient` emit `error` kèm `ApiClientError` và Promise reject.
+8. Store/UI/parser hiện tại không bị thay đổi; tích hợp vào màn hình sẽ là bước riêng nếu người dùng cho phép sửa UI hoặc store action.
+
+# 12/06/2026 02:57:02 +0700
+
+## Nội dung đã thay đổi
+- Phân tích lỗi app Android không load được project từ ảnh người dùng gửi.
+- Đọc `package.json`, `app.json`, `eas.json`, `metro.log`, native Android config và notification service để xác định ngữ cảnh Expo Go/development build.
+- Tạo file `harness-engineering/expo_android_loading_error_analysis_plan.md` chứa phân tích nguyên nhân và kế hoạch sửa lỗi.
+- Viết mới `harness-engineering/ERROR_LOG.md` theo quy tắc khi app lỗi trên điện thoại/Expo Go.
+- Cập nhật `build.sh` với hướng dẫn chạy Expo development build, tunnel, LAN và backend cho điện thoại thật.
+- Không sửa source code app, store, UI, parser hoặc backend implementation.
+
+## Project Definition
+
+### Input Data
+- Ảnh lỗi Android từ người dùng: development build báo `DebugServerException`, Metro trả `404` cho `/_expo/loading.bundle`.
+- Log local `metro.log` cho thấy port `8081` đang bị process khác chiếm và Expo CLI đã skip dev server trong non-interactive mode.
+- Frontend React Native/Expo/TypeScript strict mode với `expo-dev-client`, native Android package `com.cashtrack.app` và notification listener permission.
+- Backend C# ASP.NET Core/SQLite hiện có, không liên quan trực tiếp đến lỗi Metro bundle port `8081`.
+
+### Methodology
+- Phân biệt lỗi Metro/dev client với lỗi backend API.
+- Ưu tiên frontend behavior và cách chạy đúng môi trường: Expo Go thuần cho test giới hạn, development build cho native notification listener.
+- Không sửa code khi người dùng chỉ yêu cầu phân tích và kế hoạch.
+- Lưu phân tích/kế hoạch vào `harness-engineering/` và ghi log lỗi điện thoại vào `ERROR_LOG.md`.
+- Cập nhật cách chạy code để tránh lặp lại lỗi port `8081` bị chiếm hoặc chạy sai chế độ.
+
+### Expected Results
+- Có tài liệu rõ ràng về nguyên nhân khả dĩ nhất: Metro server cũ/sai đang chiếm `8081`, khiến thiết bị nhận `404` khi tải bundle.
+- Có kế hoạch sửa theo từng bước: dừng Metro cũ, chạy `expo start --dev-client --lan --clear`, dùng tunnel nếu LAN lỗi, rebuild dev client nếu native build cũ, và cấu hình backend LAN sau khi bundle load được.
+- Không làm thay đổi behavior runtime của app trong bước phân tích này.
+
+## Flow hệ thống sau thay đổi
+1. Người dùng gặp lỗi app Android không load được JS bundle.
+2. Agent ghi nhận lỗi vào `harness-engineering/ERROR_LOG.md`.
+3. Agent phân tích repo và lưu kế hoạch tại `harness-engineering/expo_android_loading_error_analysis_plan.md`.
+4. Developer dừng Metro server cũ đang chiếm `8081`.
+5. Developer chạy Metro đúng chế độ development build bằng `npx expo start --dev-client --lan --clear` hoặc tunnel nếu LAN bị chặn.
+6. Development build CashTrack trên điện thoại tải JS bundle từ Metro đúng project.
+7. Sau khi bundle load thành công, frontend mới gọi backend qua API adapter; nếu dùng điện thoại thật thì backend cần bind `0.0.0.0:5055` và frontend dùng `EXPO_PUBLIC_API_BASE_URL=http://<LAN-IP>:5055`.

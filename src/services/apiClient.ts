@@ -37,7 +37,44 @@ export class ApiClientError extends Error {
   }
 }
 
+export type ApiRequestStatus = 'idle' | 'loading' | 'success' | 'error';
+
+export interface ApiRequestState<T> {
+  status: ApiRequestStatus;
+  loading: boolean;
+  data: T | null;
+  error: ApiClientError | null;
+}
+
+export interface ApiCallOptions<T> {
+  signal?: AbortSignal;
+  onStateChange?: (state: ApiRequestState<T>) => void;
+}
+
 const normalizeBaseUrl = (baseUrl: string): string => baseUrl.replace(/\/+$/, '');
+
+const createState = <T>(
+  status: ApiRequestStatus,
+  data: T | null,
+  error: ApiClientError | null
+): ApiRequestState<T> => ({
+  status,
+  loading: status === 'loading',
+  data,
+  error,
+});
+
+const toApiClientError = (error: unknown): ApiClientError => {
+  if (error instanceof ApiClientError) {
+    return error;
+  }
+
+  if (error instanceof Error) {
+    return new ApiClientError(error.message, 0);
+  }
+
+  return new ApiClientError('Network request failed', 0);
+};
 
 export const resolveApiBaseUrl = (): string => {
   const envBaseUrl = process?.env?.EXPO_PUBLIC_API_BASE_URL?.trim();
@@ -109,51 +146,84 @@ class CashTrackApiClient {
     this.baseUrl = baseUrl ? normalizeBaseUrl(baseUrl) : undefined;
   }
 
-  health(): Promise<HealthResponse> {
-    return this.request<HealthResponse>('/health');
+  health(options?: ApiCallOptions<HealthResponse>): Promise<HealthResponse> {
+    return this.request<HealthResponse>('/health', {}, options);
   }
 
-  listTransactions(query?: TransactionQuery): Promise<TransactionListResponse> {
-    return this.request<TransactionListResponse>('/api/v1/transactions', { query });
+  listTransactions(
+    query?: TransactionQuery,
+    options?: ApiCallOptions<TransactionListResponse>
+  ): Promise<TransactionListResponse> {
+    return this.request<TransactionListResponse>('/api/v1/transactions', { query }, options);
   }
 
-  getTransaction(id: string): Promise<TransactionDto> {
-    return this.request<TransactionDto>(`/api/v1/transactions/${encodeURIComponent(id)}`);
+  getTransaction(id: string, options?: ApiCallOptions<TransactionDto>): Promise<TransactionDto> {
+    return this.request<TransactionDto>(
+      `/api/v1/transactions/${encodeURIComponent(id)}`,
+      {},
+      options
+    );
   }
 
-  createTransaction(request: CreateTransactionRequest): Promise<TransactionDto> {
-    return this.request<TransactionDto>('/api/v1/transactions', {
-      method: 'POST',
-      body: request,
-    });
+  createTransaction(
+    request: CreateTransactionRequest,
+    options?: ApiCallOptions<TransactionDto>
+  ): Promise<TransactionDto> {
+    return this.request<TransactionDto>(
+      '/api/v1/transactions',
+      {
+        method: 'POST',
+        body: request,
+      },
+      options
+    );
   }
 
-  updateTransaction(id: string, request: UpdateTransactionRequest): Promise<TransactionDto> {
-    return this.request<TransactionDto>(`/api/v1/transactions/${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      body: request,
-    });
+  updateTransaction(
+    id: string,
+    request: UpdateTransactionRequest,
+    options?: ApiCallOptions<TransactionDto>
+  ): Promise<TransactionDto> {
+    return this.request<TransactionDto>(
+      `/api/v1/transactions/${encodeURIComponent(id)}`,
+      {
+        method: 'PATCH',
+        body: request,
+      },
+      options
+    );
   }
 
-  async deleteTransaction(id: string): Promise<void> {
-    await this.request<void>(`/api/v1/transactions/${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-    });
+  async deleteTransaction(id: string, options?: ApiCallOptions<void>): Promise<void> {
+    await this.request<void>(
+      `/api/v1/transactions/${encodeURIComponent(id)}`,
+      {
+        method: 'DELETE',
+      },
+      options
+    );
   }
 
-  listCategories(): Promise<CategoryDto[]> {
-    return this.request<CategoryDto[]>('/api/v1/categories');
+  listCategories(options?: ApiCallOptions<CategoryDto[]>): Promise<CategoryDto[]> {
+    return this.request<CategoryDto[]>('/api/v1/categories', {}, options);
   }
 
-  listBanks(): Promise<BankInfoDto[]> {
-    return this.request<BankInfoDto[]>('/api/v1/banks');
+  listBanks(options?: ApiCallOptions<BankInfoDto[]>): Promise<BankInfoDto[]> {
+    return this.request<BankInfoDto[]>('/api/v1/banks', {}, options);
   }
 
-  parseNotification(request: ParseNotificationRequest): Promise<ParseNotificationResponse> {
-    return this.request<ParseNotificationResponse>('/api/v1/notifications/parse', {
-      method: 'POST',
-      body: request,
-    });
+  parseNotification(
+    request: ParseNotificationRequest,
+    options?: ApiCallOptions<ParseNotificationResponse>
+  ): Promise<ParseNotificationResponse> {
+    return this.request<ParseNotificationResponse>(
+      '/api/v1/notifications/parse',
+      {
+        method: 'POST',
+        body: request,
+      },
+      options
+    );
   }
 
   private async request<T>(
@@ -162,35 +232,49 @@ class CashTrackApiClient {
       method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
       query?: object;
       body?: unknown;
-    } = {}
+    } = {},
+    callOptions?: ApiCallOptions<T>
   ): Promise<T> {
     const method = options.method ?? 'GET';
     const url = `${this.baseUrl ?? resolveApiBaseUrl()}${path}${buildQueryString(options.query)}`;
     const hasBody = options.body !== undefined;
 
-    const response = await fetch(url, {
-      method,
-      headers: {
-        Accept: 'application/json',
-        ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
-      },
-      body: hasBody ? JSON.stringify(normalizeRequestBody(options.body)) : undefined,
-    });
+    callOptions?.onStateChange?.(createState<T>('loading', null, null));
 
-    if (response.status === 204) {
-      return undefined as T;
+    try {
+      const response = await fetch(url, {
+        method,
+        headers: {
+          Accept: 'application/json',
+          ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
+        },
+        body: hasBody ? JSON.stringify(normalizeRequestBody(options.body)) : undefined,
+        signal: callOptions?.signal,
+      });
+
+      if (response.status === 204) {
+        const emptyResult = undefined as T;
+        callOptions?.onStateChange?.(createState<T>('success', emptyResult, null));
+        return emptyResult;
+      }
+
+      const contentType = response.headers.get('content-type') ?? '';
+      const payload = contentType.includes('application/json') ? await response.json() : undefined;
+
+      if (!response.ok) {
+        const problem = payload as ApiProblemDetails | undefined;
+        const message = problem?.detail || problem?.title || `Request failed with status ${response.status}`;
+        throw new ApiClientError(message, response.status, problem);
+      }
+
+      const result = payload as T;
+      callOptions?.onStateChange?.(createState<T>('success', result, null));
+      return result;
+    } catch (error) {
+      const apiError = toApiClientError(error);
+      callOptions?.onStateChange?.(createState<T>('error', null, apiError));
+      throw apiError;
     }
-
-    const contentType = response.headers.get('content-type') ?? '';
-    const payload = contentType.includes('application/json') ? await response.json() : undefined;
-
-    if (!response.ok) {
-      const problem = payload as ApiProblemDetails | undefined;
-      const message = problem?.detail || problem?.title || `Request failed with status ${response.status}`;
-      throw new ApiClientError(message, response.status, problem);
-    }
-
-    return payload as T;
   }
 }
 
