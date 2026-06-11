@@ -1,5 +1,80 @@
 # 📋 Changelog
 
+## 12/06/2026 02:28:43 +0700
+
+### Thay đổi
+- Thêm DTO TypeScript khớp backend response trong `src/types/api.ts`.
+- Thêm fetch API client trong `src/services/apiClient.ts`, dùng `EXPO_PUBLIC_API_BASE_URL` và không hardcode URL trong screen.
+- API client có fallback dev URL: Android emulator `http://10.0.2.2:5055`, iOS simulator/web `http://localhost:5055`, máy thật yêu cầu cấu hình LAN IP qua `EXPO_PUBLIC_API_BASE_URL`.
+- Export API client/type qua `src/services/index.ts` và `src/types/index.ts`.
+- Không sửa UI/screen.
+- Cập nhật `build.sh` với cách chạy backend và frontend kèm biến môi trường API.
+
+### Lý do
+- Tạo lớp adapter/service duy nhất để frontend gọi backend mà không rải URL hoặc fetch logic vào UI.
+- Giữ frontend TypeScript strict mode là source of truth, đồng thời bám DTO camelCase từ backend ASP.NET Core.
+
+### Kiểm tra
+- `npx tsc --noEmit`: phần API client/type mới không còn lỗi; project vẫn còn lỗi TypeScript có sẵn ở `src/components/common/Card.tsx`, `src/store/authStore.ts`, `src/theme/ThemeContext.tsx`, `src/theme/index.ts`.
+- `dotnet run --project backend/CashTrack.Api/CashTrack.Api.csproj --no-build --urls http://127.0.0.1:5055`: chạy được backend local.
+- `curl -i http://127.0.0.1:5055/health`: trả `200 OK` và `{"status":"ok"}`.
+- `curl -i http://127.0.0.1:5055/api/v1/transactions`: trả `200 OK` với `items` và `nextCursor`.
+
+## 12/06/2026 02:18:01 +0700
+
+### Thay đổi
+- Implement REST API v1 bằng ASP.NET Core minimal API nhất quán.
+- Thêm DTO riêng trong `backend/CashTrack.Api/Contracts/ApiContracts.cs`, không expose trực tiếp EF entity ra frontend.
+- Thêm endpoint mapping trong `backend/CashTrack.Api/Endpoints/ApiEndpointExtensions.cs` cho transaction CRUD, category/list, bank/list, notification parse, webhook CRUD/send/test và backup JSON import/export.
+- Thêm parser notification backend trong `backend/CashTrack.Api/Services/NotificationParsingService.cs`.
+- Cập nhật `Program.cs` để bật JSON camelCase, ProblemDetails, CORS cho Expo dev origins, Swagger/OpenAPI và HttpClient cho webhook.
+- Thêm package `Swashbuckle.AspNetCore` version `6.5.0` để có Swagger UI/OpenAPI.
+- Dùng async EF Core cho truy vấn/ghi dữ liệu và validate input trước khi ghi DB.
+- Dùng dev user nội bộ `dev-user` cho API scaffold hiện tại vì contract frontend hiện chưa có auth API backend.
+- Cập nhật `build.sh` với lệnh chạy backend trên `http://127.0.0.1:5055` và Swagger tại `/swagger`.
+
+### Lý do
+- Cung cấp API backend tối thiểu để frontend React Native có thể tích hợp qua API adapter/service sau này.
+- Giữ contract JSON khớp frontend hiện tại, đồng thời tách DTO khỏi EF entity để tránh rò rỉ schema nội bộ.
+- Đảm bảo có Swagger để kiểm tra endpoint và có ProblemDetails/validation nhất quán cho lỗi input.
+
+### Kiểm tra
+- `dotnet build backend/CashTrack.Api/CashTrack.Api.csproj`: pass, 0 warning, 0 error.
+- `dotnet run --project backend/CashTrack.Api/CashTrack.Api.csproj --no-build --urls http://127.0.0.1:5055`: chạy được.
+- `curl http://127.0.0.1:5055/swagger/v1/swagger.json`: pass, thấy `/api/v1/transactions` và các endpoint API v1.
+- `curl http://127.0.0.1:5055/api/v1/transactions`: pass, trả `200 OK`.
+- `curl -X POST http://127.0.0.1:5055/api/v1/transactions ...`: pass, trả `201 Created` với `TransactionDto` camelCase.
+- Không chạy `dotnet test` vì không tìm thấy backend test project.
+
+## 12/06/2026 01:56:16 +0700
+
+### Thay đổi
+- Tạo thư mục `harness-engineering/` để gom các markdown phục vụ harness engineering.
+- Di chuyển các file harness engineering markdown vào `harness-engineering/`: `ERROR_LOG.md`, `missing.md`, `my_api_contract.md`, `my_entity_list.md`, `my_plan.md`, `project_definition.md`, `testcases.md`.
+- Cập nhật `AGENTS.md` để quy định đường dẫn mới cho project definition, testcase, error log, API contract, entity list, missing report và kế hoạch.
+- Cập nhật `harness-engineering/project_definition.md` theo cấu trúc ghi nhận thay đổi của dự án.
+- Viết lại `build.sh` với cách chạy code hiện tại.
+- Cập nhật `.gitignore` để markdown trong `harness-engineering/` không bị ignore.
+
+### Lý do
+- Giữ root repository gọn hơn, chỉ giữ `AGENTS.md` và `CHANGELOG.md` cho harness-level markdown bắt buộc.
+- Gom các tài liệu kỹ thuật/harness vào một nơi để các bước thiết kế, kiểm thử và log không bị rải rác.
+
+## 12/06/2026 01:28:04 +0700
+
+### Thay đổi
+- Tạo migration EF Core đầu tiên `InitialCreate` cho backend `backend/CashTrack.Api`.
+- Tạo các file migration trong `backend/CashTrack.Api/Migrations`.
+- Update SQLite database tại `backend/CashTrack.Api/cashtrack.db` bằng migration `20260611182529_InitialCreate`.
+- Kiểm tra `dotnet ef migrations list` thấy migration `20260611182529_InitialCreate`.
+- Chạy `dotnet build backend/CashTrack.Api/CashTrack.Api.csproj` thành công.
+- Không thêm `IDesignTimeDbContextFactory<AppDbContext>` vì EF CLI đã tạo được `AppDbContext` lúc design-time.
+- Cập nhật `project_definition.md` và `build.sh` theo hướng dẫn ghi nhận/thực thi của dự án.
+
+### Lý do
+- Khởi tạo schema SQLite thực tế từ mô hình EF Core code-first để backend có database chạy được.
+- Xác nhận migration đầu tiên đã được apply vào database và backend vẫn build sạch sau khi sinh migration.
+
 ## 11/06/2026 22:02:22 +0700
 
 ### Thay đổi
