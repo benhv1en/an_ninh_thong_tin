@@ -460,3 +460,165 @@
 5. Test gọi `/health`, `/api/v1/transactions` GET/POST và validation fail case qua `HttpClient`.
 6. Developer có thể chạy backend local rồi bấm từng request trong `backend/CashTrack.Api/CashTrack.Api.http`.
 7. Frontend kiểm tra lại bằng API adapter với base URL trỏ về backend local/emulator/device tương ứng.
+
+# 12/06/2026 08:51:06 +0700
+
+## Nội dung đã thay đổi
+- Đọc toàn bộ frontend text hiện tại trước khi lập kế hoạch thêm đăng nhập/đăng ký.
+- Ghi mới `harness-engineering/my_plan.md` với kế hoạch ngắn, danh sách file dự kiến sửa và ràng buộc bảo mật/session.
+- Cập nhật `AGENTS.md` để từ nay mọi kế hoạch trước khi sửa code phải được ghi mới vào `harness-engineering/my_plan.md`, không append.
+- Viết lại `build.sh` theo quy tắc dự án.
+- Chưa sửa code runtime/frontend/backend.
+
+## Project Definition
+
+### Input Data
+- Frontend React Native/Expo/TypeScript strict mode hiện tại.
+- Entry/navigation: `App.tsx`, `AppNavigator`, screens barrel.
+- Auth hiện có: `AuthScreen`, `authStore`, `authService`, `securityService`, `types/auth`.
+- Persisted data hiện có: AsyncStorage keys cho auth account/settings/webhooks và encrypted transaction storage.
+- Ràng buộc mới: token đăng nhập không lưu bằng AsyncStorage; nếu cần persist token/session trên Android/iOS thì dùng `expo-secure-store`.
+
+### Methodology
+- Không sửa code trong bước hiện tại, chỉ lập kế hoạch.
+- Frontend hiện có sẵn auth building blocks nên kế hoạch ưu tiên nối auth gate vào navigation thay vì dựng lại UI mới.
+- Không phá bottom tab navigation hiện tại; nếu implement thì bọc/gate ở root navigator.
+- Không đổi Zustand store shape nếu không cần; chỉ export store qua barrel nếu cần.
+- Không đổi AsyncStorage key hiện có và không xóa dữ liệu cũ.
+- Không tự thêm token/session persistence nếu backend auth contract chưa có.
+
+### Expected Results
+- Có kế hoạch implementation rõ file nào sửa, file nào không sửa.
+- Có quy tắc AGENTS mới bắt buộc ghi mới kế hoạch vào `harness-engineering/my_plan.md` trước khi sửa code.
+- Bước tiếp theo có thể implement auth gate nhỏ, dễ review và có kiểm chứng `npx tsc --noEmit`.
+
+## Flow hệ thống sau thay đổi kế hoạch
+1. Trước mọi lần sửa code, agent đọc context cần thiết.
+2. Agent trình bày kế hoạch ngắn và ghi mới `harness-engineering/my_plan.md`.
+3. Với tính năng auth sắp tới, app sẽ dùng `authStore.hasHydrated` và `authStore.isAuthenticated` để quyết định render `AuthScreen` hay bottom tabs.
+4. Sau đăng ký/đăng nhập thành công, transaction store hydrate dữ liệu sau khi data key được unlock.
+5. Notification listener chỉ nên process sau khi user authenticated để tránh ghi dữ liệu khi store đang locked.
+6. Nếu backend auth token xuất hiện sau này, token/session persistent phải đi qua `expo-secure-store`, không qua AsyncStorage.
+# 12/06/2026 09:05:06 +0700
+
+## Nội dung đã thay đổi
+- Đọc lỗi từ ảnh chụp màn hình điện thoại Android khi chạy bằng Expo Go.
+- Ghi báo cáo/kế hoạch sửa lỗi vào `harness-engineering/error_report_via_phone_screenshot.md`.
+- Viết mới log lỗi Expo/mobile vào `harness-engineering/ERROR_LOG.md`.
+- Cập nhật `AGENTS.md` để từ nay mọi báo cáo và kế hoạch sửa lỗi dựa trên ảnh chụp màn hình điện thoại phải được viết mới vào `harness-engineering/error_report_via_phone_screenshot.md`.
+- Không sửa source code frontend/backend, UI, navigation, Zustand store, AsyncStorage schema, notification parser hoặc `build.sh` trong lượt này vì người dùng yêu cầu chỉ lập kế hoạch và không sửa code.
+
+## Project Definition
+
+### Input Data
+- Frontend React Native/Expo/TypeScript strict mode là source of truth cho hành vi app.
+- App hiện có service bảo mật/auth dùng `expo-crypto`, `node-forge`, `bcryptjs`.
+- Dữ liệu đăng nhập, khóa dữ liệu và giao dịch local liên quan đến `authService`, `securityService`, `encryptedStorageService`, Zustand store và AsyncStorage.
+- Ảnh chụp màn hình điện thoại Android ghi lỗi Expo Go runtime: `Cannot find native module 'ExpoCryptoAES'`.
+- Backend C# ASP.NET Core/EF Core/SQLite vẫn tồn tại nhưng không liên quan trực tiếp đến lỗi native module này.
+
+### Methodology
+- Chỉ phân tích lỗi và lập kế hoạch, chưa sửa runtime code.
+- Xác định lỗi theo đường import/source thay vì đoán từ UI.
+- Giữ nguyên nguyên tắc không tự ý sửa UI, navigation, Zustand store, AsyncStorage schema hoặc parser thông báo ngân hàng.
+- Với lỗi Expo Go/native module, ưu tiên development build/dev client nếu app cần module native không có sẵn trong Expo Go.
+- Nếu bắt buộc hỗ trợ Expo Go, chỉ sửa lớp service/adapter/crypto tương ứng và đánh giá lại rủi ro bảo mật.
+
+### Expected Results
+- Có báo cáo rõ ràng về nguyên nhân lỗi `ExpoCryptoAES`.
+- Có kế hoạch fix theo hai hướng: development build khuyến nghị, hoặc thay/lazy-load crypto nếu bắt buộc Expo Go.
+- Các lượt xử lý lỗi qua ảnh chụp màn hình điện thoại sau này có file lưu chuẩn trong `harness-engineering/error_report_via_phone_screenshot.md`.
+- Source app chưa bị thay đổi trong lượt lập kế hoạch này.
+
+## Flow hệ thống sau thay đổi
+1. Người dùng gửi ảnh chụp lỗi điện thoại.
+2. Agent đọc source liên quan và đối chiếu với lỗi trong ảnh.
+3. Nếu lỗi đến từ điện thoại/Expo Go, agent viết mới `harness-engineering/ERROR_LOG.md`.
+4. Nếu báo cáo/kế hoạch dựa trên ảnh chụp màn hình điện thoại, agent viết mới `harness-engineering/error_report_via_phone_screenshot.md`.
+5. Agent chỉ sửa code sau khi có kế hoạch và được yêu cầu triển khai.
+6. Khi fix thật sự, hướng khuyến nghị là development build/dev client cho các native module như crypto AES và notification listener.
+
+
+# 12/06/2026 09:25:36 +0700
+
+## Nội dung đã thay đổi
+- Cập nhật `AGENTS.md` để thêm quy tắc xử lý lỗi sandbox khi ghi markdown.
+- Ghi rõ nếu `apply_patch` lỗi sandbox helper khi ghi file, hoặc lệnh ghi tài liệu trong sandbox lỗi `bwrap: loopback`, agent phải chuyển sang ghi ngoài sandbox để hoàn tất đúng các file markdown theo yêu cầu.
+- Ghi rõ agent không dừng lại hỏi lại người dùng trong tình huống này; nếu công cụ bắt buộc approval/escalation thì thực hiện ngay theo cơ chế đó và tiếp tục sau khi được duyệt.
+- Viết mới `harness-engineering/my_plan.md` cho kế hoạch thay đổi lần này.
+- Cập nhật đầu `CHANGELOG.md` để ghi lại thay đổi tài liệu.
+
+## Project Definition
+
+### Input Data
+- Source code frontend React Native/Expo/TypeScript strict mode của CashTrack.
+- Backend C# ASP.NET Core, EF Core code-first và SQLite hiện có.
+- Quy tắc làm việc trong `AGENTS.md`.
+- Các tài liệu harness engineering trong `harness-engineering/`, bao gồm kế hoạch, project definition, testcase, log lỗi và contract.
+- Lịch sử thay đổi trong `CHANGELOG.md` và hướng dẫn chạy trong `build.sh`.
+
+### Methodology
+- Trước khi sửa code hoặc tài liệu chính, agent phải lập kế hoạch ngắn và viết mới `harness-engineering/my_plan.md`.
+- Các thay đổi phải nhỏ, đúng phạm vi, không tự ý sửa UI hoặc refactor ngoài yêu cầu.
+- Khi sandbox helper/bwrap làm lỗi thao tác ghi markdown bắt buộc, agent chuyển sang cơ chế ghi ngoài sandbox để đảm bảo tài liệu harness vẫn được cập nhật đúng.
+- Nếu công cụ thực thi bắt buộc approval/escalation, agent thực hiện ngay theo cơ chế đó thay vì dừng phân tích hoặc bỏ qua bước ghi tài liệu.
+- Sau thay đổi, agent cập nhật đầu `CHANGELOG.md`, ghi tiếp `harness-engineering/project_definition.md` và viết lại `build.sh`.
+
+### Expected Results
+- `AGENTS.md` có quy tắc rõ ràng hơn cho trường hợp sandbox helper/bwrap làm lỗi ghi markdown.
+- Các file markdown harness bắt buộc vẫn được ghi đúng ngay cả khi sandbox nội bộ lỗi.
+- Luồng làm việc của repository ổn định hơn trong các phiên bị lỗi sandbox ghi file.
+- Không ảnh hưởng runtime frontend/backend, API contract, database hoặc UI.
+
+## Flow hệ thống sau thay đổi
+1. Người dùng đưa yêu cầu.
+2. Agent đọc `AGENTS.md` và lập kế hoạch ngắn vào `harness-engineering/my_plan.md`.
+3. Agent thực hiện thay đổi đúng phạm vi.
+4. Nếu `apply_patch` hoặc lệnh ghi tài liệu trong sandbox lỗi sandbox helper/`bwrap: loopback`, agent dùng cơ chế ghi ngoài sandbox để ghi đúng file markdown bắt buộc.
+5. Nếu công cụ yêu cầu approval/escalation, agent thực hiện ngay theo cơ chế đó rồi tiếp tục sau khi được duyệt.
+6. Agent đọc lại file đã ghi để xác nhận nội dung.
+7. Agent cập nhật đầu `CHANGELOG.md`, ghi tiếp `harness-engineering/project_definition.md` và viết lại `build.sh` sau mỗi prompt.
+8. Frontend/backend runtime vẫn giữ nguyên trừ khi người dùng yêu cầu sửa code chức năng.
+
+
+# 12/06/2026 09:40:56 +0700
+
+## Nội dung đã thay đổi
+- Fix lỗi Expo Go `[runtime not ready]: Error: Cannot find native module 'ExpoCryptoAES'` bằng cách bỏ đường dùng AES native của `expo-crypto`.
+- `src/services/securityService.ts` không còn import `expo-crypto`; AES-256-GCM được implement bằng `node-forge` thuần JS để tương thích Expo Go.
+- `randomBytes` ưu tiên Web Crypto `globalThis.crypto.getRandomValues` nếu runtime Expo Go/React Native cung cấp, fallback sang `node-forge` nếu không có.
+- Thêm `randomUuid` trong `securityService` và cập nhật `authService` để tạo UUID/random bằng helper JS, không dùng `Crypto.randomUUID` hay `Crypto.getRandomBytes` từ `expo-crypto`.
+- Cập nhật `package.json` và `package-lock.json` với `bcryptjs`, `node-forge`, `@types/node-forge`.
+- Ghi log failed testcase vào `harness-engineering/FAILED_TESTCASE.md` vì lần chạy TypeScript đầu fail do thiếu declaration `node-forge`, sau đó đã bổ sung type và chạy lại pass.
+- Không sửa UI, screen, navigation, backend, EF migration hoặc API contract.
+
+## Project Definition
+
+### Input Data
+- Frontend React Native/Expo/TypeScript strict mode của CashTrack.
+- Auth/encryption local hiện có: `authService`, `securityService`, `encryptedStorageService`, `StoredAuthAccount`, Zustand stores và AsyncStorage.
+- Log lỗi điện thoại/Expo Go trong `harness-engineering/error_report_via_phone_screenshot.md` ghi `Cannot find native module 'ExpoCryptoAES'`.
+- Yêu cầu vận hành mới: vẫn phải chạy bằng Expo Go, không chuyển bắt buộc sang development build/dev client để xử lý lỗi này.
+
+### Methodology
+- Giữ API public của `securityService` như `encryptStringAes256Gcm`, `decryptStringAes256Gcm`, `randomBytesBase64`, `generateDataKey`, `setActiveDataKey` để các service/store khác không phải đổi contract.
+- Thay implementation AES native bằng `node-forge` AES-GCM thuần JS, format payload vẫn là base64 của chuỗi byte `iv + ciphertext + tag`.
+- Không import `expo-crypto` ở startup để Expo Go không tải native module `ExpoCryptoAES`.
+- Khai báo dependency trực tiếp trong `package.json` để checkout sạch cài đúng package đang được source import.
+- Kiểm chứng bằng TypeScript strict mode, dependency tree, grep loại bỏ API native và round-trip AES-GCM bằng `node-forge`.
+
+### Expected Results
+- App không còn crash ở Expo Go vì `ExpoCryptoAES` trên đường import auth/security.
+- Đăng ký/đăng nhập local vẫn có thể tạo data key, wrap/unwrap data key và tạo session local.
+- Encrypted transaction storage tiếp tục gọi cùng API mã hóa/giải mã, không cần đổi AsyncStorage key hoặc store shape.
+- Expo Go vẫn không có native NotificationListener đầy đủ, nhưng lỗi `ExpoCryptoAES` đã được xử lý ở lớp crypto.
+
+## Flow hệ thống sau thay đổi
+1. App Expo Go load JS bundle.
+2. `authService` import `securityService` mà không import `expo-crypto`, nên không tải `ExpoCryptoAES`.
+3. Khi đăng ký, `authService` tạo salt/data key/UUID bằng helper JS trong `securityService`.
+4. `securityService` ưu tiên `globalThis.crypto.getRandomValues` cho random bytes nếu runtime có, fallback sang `node-forge`.
+5. Data key được wrap bằng `encryptStringAes256Gcm` dùng `node-forge` AES-GCM và lưu vào account local.
+6. Khi đăng nhập, `decryptStringAes256Gcm` unwrap data key bằng cùng format `iv + ciphertext + tag`.
+7. `encryptedStorageService` tiếp tục mã hóa/giải mã transaction persisted bằng active data key.
+8. Nếu test TypeScript fail, log lỗi được ghi vào `harness-engineering/FAILED_TESTCASE.md`; sau khi thêm `@types/node-forge`, TypeScript check pass.

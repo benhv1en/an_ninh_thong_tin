@@ -1,5 +1,46 @@
 # 📋 Changelog
 
+## 12/06/2026 09:40:56 +0700
+
+### Thay đổi
+- Fix lỗi Expo Go `[runtime not ready]: Error: Cannot find native module 'ExpoCryptoAES'` đã ghi trong `harness-engineering/error_report_via_phone_screenshot.md`.
+- Sửa `src/services/securityService.ts` để bỏ hoàn toàn import `expo-crypto` và thay AES-256-GCM native bằng AES-GCM thuần JS qua `node-forge`.
+- Thêm helper random/UUID trong `securityService`; `randomBytes` ưu tiên `globalThis.crypto.getRandomValues` nếu Expo Go/RN cung cấp, rồi mới fallback sang PRNG của `node-forge`.
+- Sửa `src/services/authService.ts` để bỏ import `expo-crypto`, dùng `randomBytes`, `randomBytesBase64` và `randomUuid` từ `securityService`.
+- Cập nhật `package.json` và `package-lock.json` để khai báo trực tiếp `bcryptjs`, `node-forge` và `@types/node-forge`.
+- Viết mới `harness-engineering/FAILED_TESTCASE.md` vì lần chạy `npx tsc --noEmit` đầu tiên fail do thiếu type `node-forge`, sau đó đã fix và chạy lại pass.
+- Viết lại `build.sh` với hướng dẫn Expo Go sau khi bỏ phụ thuộc `ExpoCryptoAES`.
+
+### Lý do
+- Người dùng yêu cầu bắt buộc dùng Expo Go, nên không thể dựa vào native AES module không có trong Expo Go.
+- Giữ luồng auth/encrypted storage hiện tại nhưng chuyển phần mã hóa sang implementation JS tương thích Expo Go, không sửa UI/navigation/backend.
+
+### Kiểm tra
+- `npx tsc --noEmit`: fail lần đầu do thiếu `@types/node-forge`, đã ghi log vào `harness-engineering/FAILED_TESTCASE.md`.
+- `npm install --save-dev @types/node-forge`: pass.
+- `npx tsc --noEmit`: pass, exit code 0.
+- `node -e ...`: pass, `forge AES-GCM round-trip OK`.
+- `npm ls bcryptjs node-forge @types/node-forge`: pass, thấy `bcryptjs@3.0.3`, `node-forge@1.4.0`, `@types/node-forge@1.3.14`.
+- `rg "expo-crypto|ExpoCryptoAES|AESEncryptionKey|aesEncryptAsync|aesDecryptAsync|AESSealedData" src package.json package-lock.json`: không còn match.
+
+### Lưu ý
+- `npm install` báo 19 vulnerabilities trong dependency tree hiện có; lượt này không chạy `npm audit fix` vì có thể tạo thay đổi ngoài phạm vi fix Expo Go.
+
+## 12/06/2026 09:25:36 +0700
+
+### Thay đổi
+- Cập nhật `AGENTS.md` với mục `Xu ly loi sandbox khi ghi markdown`.
+- Bổ sung quy tắc: khi `apply_patch` lỗi sandbox helper lúc ghi markdown, hoặc lệnh ghi tài liệu trong sandbox lỗi `bwrap: loopback`, agent phải chuyển sang ghi ngoài sandbox để ghi đúng file markdown bắt buộc.
+- Ghi rõ agent không dừng lại hỏi lại người dùng trong trường hợp này; nếu tool bắt buộc approval/escalation thì thực hiện ngay theo cơ chế tool rồi tiếp tục sau khi được duyệt.
+- Viết mới `harness-engineering/my_plan.md` cho kế hoạch thay đổi tài liệu lần này.
+
+### Lý do
+- Giảm kẹt việc khi sandbox helper/bwrap làm lỗi thao tác ghi tài liệu harness, nhất là các file markdown bắt buộc như kế hoạch, changelog, project definition và log lỗi.
+- Giữ luồng làm việc vẫn ưu tiên ghi đúng tài liệu theo quy tắc repository.
+
+### Kiểm tra
+- Không chạy test/build vì thay đổi chỉ nằm ở tài liệu hướng dẫn và harness script.
+
 ## 12/06/2026 08:28:29 +0700
 
 ### Thay đổi

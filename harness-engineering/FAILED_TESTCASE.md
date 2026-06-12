@@ -1,30 +1,33 @@
-# 12/06/2026 08:13:07 +0700
+# Failed testcase log
 
-## Testcase da fix
-- Command: `npx tsc --noEmit`
-- Ket qua truoc do: fail voi exit code `2`.
-- Ket qua sau khi sua: pass voi exit code `0`.
-- Pham vi: TypeScript project-wide compile check.
+Thoi diem ghi nhan: 12/06/2026 09:38:14 +0700
+Thoi diem xu ly xong: 12/06/2026 09:40:56 +0700
 
-## Loi cu da xu ly
+## Lenh test bi fail
+
 ```text
-src/components/common/Card.tsx(45,17): error TS2769: LinearGradient colors nhan `string[]` thay vi tuple it nhat 2 mau.
-src/store/authStore.ts(29,34): error TS2339: `lockInMemoryData` khong ton tai trong `TransactionState`.
-src/theme/ThemeContext.tsx(75,41): error TS2322: `darkTheme` khong gan duoc vao `Theme` vi `Theme` chi la `typeof lightTheme`.
-src/theme/index.ts(13,28): error TS2322: `getTheme('dark')` tra `darkTheme` nhung `Theme` chi chap nhan light mode.
-```
-
-## Thay doi da fix
-- `src/components/common/Card.tsx`: doi `gradientColors` sang tuple readonly `[ColorValue, ColorValue, ...ColorValue[]]` dung voi `expo-linear-gradient`.
-- `src/theme/colors.ts`: doi `Theme` thanh union `typeof lightTheme | typeof darkTheme`.
-- `src/store/transactionStore.ts`: them action `lockInMemoryData` va dung `encryptedTransactionStorage` thay cho AsyncStorage truc tiep.
-
-## Lenh da chay
-```bash
 npx tsc --noEmit
 ```
 
-## Ket qua
+## Ket qua fail ban dau
+
 ```text
-Pass, exit code 0, khong co TypeScript error.
+src/services/securityService.ts(1,24): error TS7016: Could not find a declaration file for module 'node-forge'. '/home/benhv1en/Documents/an_ninh_thong_tin/node_modules/node-forge/lib/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/node-forge` if it exists or add a new declaration (.d.ts) file containing `declare module 'node-forge';`
+```
+
+## Nguyen nhan
+
+Sau khi bo `expo-crypto` va dung `node-forge` truc tiep de ho tro Expo Go, package type `@types/node-forge` chua duoc khai bao trong `devDependencies`, nen TypeScript strict mode khong co declaration cho module `node-forge`.
+
+## Cach da sua
+
+- Chay `npm install --save-dev @types/node-forge` de khai bao type cho `node-forge`.
+- Chay lai `npx tsc --noEmit` thanh cong, exit code 0.
+
+## Trang thai sau fix
+
+```text
+npx tsc --noEmit
+# pass, exit code 0
 ```

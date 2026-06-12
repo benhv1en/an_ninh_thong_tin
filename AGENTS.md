@@ -8,7 +8,7 @@ Day la du an CashTrack: frontend hien tai la React Native/Expo viet bang TypeScr
 
 ## Quy tac lam viec
 
-- Truoc khi sua code, phai trinh bay mot ke hoach ngan, ro cac file/vung se tac dong.
+- Truoc khi sua code, phai trinh bay mot ke hoach ngan, ro cac file/vung se tac dong. Ke hoach nay cung phai duoc luu bang cach VIET MOI lai file `harness-engineering/my_plan.md`, khong append/ghi tiep noi dung cu.
 - Moi thay doi phai nho, co giai thich ly do va khong tron refactor ngoai pham vi.
 - Khong tu y sua UI. Khong sua man hinh, component, theme, layout, text hien thi, navigation hoac style neu nguoi dung khong yeu cau ro.
 - Neu can sua frontend de ket noi backend, chi sua lop API adapter/service va cac kieu du lieu lien quan den contract. Khong sua UI de "cho tien".
@@ -16,6 +16,12 @@ Day la du an CashTrack: frontend hien tai la React Native/Expo viet bang TypeScr
 - Sau khi sửa code, hãy lưu lại hết tất cả các thay đổi bằng cách CẬP NHẬT VÀO ĐẦU FILE (KHÔNG PHẢI LÀ VIẾT MỚI, cũng không phải là cập nhật vào cuối file) vào file `CHANGELOG.md`. Cập nhật ấy phải ghi rõ: ngày tháng năm giờ phút giây, thứ gì đã thay đổi, lý do mục đích thay đổi thứ ấy,...
 - Trong quá trình testing, nếu test lỗi, bắt buộc phải lưu log báo lỗi của failed tastcase đó bằng cách VIẾT MỚI lại file `harness-engineering/FAILED_TESTCASE.md`
 - Khi app chạy lỗi trên điện thoại hoặc chạy lỗi qua Expo Go, bắt buộc phải lưu log báo lỗi của lỗi đó bằng cách VIẾT MỚI lại file `harness-engineering/ERROR_LOG.md`
+
+## Xu ly loi sandbox khi ghi markdown
+
+- Neu `apply_patch` bi loi sandbox helper khi ghi file markdown, hoac lenh ghi tai lieu trong sandbox bi loi `bwrap: loopback`, coi day la loi moi truong sandbox va khong coi la blocker noi dung.
+- Trong truong hop tren, agent phai tu dong chay lenh ghi file ngoai sandbox de ghi dung cac file markdown theo yeu cau cua repository, khong dung lai hoi nguoi dung xin phep rieng. Neu co che tool bat buoc approval/escalation, thuc hien ngay escalation theo co che do roi tiep tuc sau khi duoc phe duyet.
+- Sau khi ghi ngoai sandbox, phai doc lai file lien quan de xac nhan noi dung da duoc ghi dung, dac biet cac file `harness-engineering/my_plan.md`, `CHANGELOG.md`, `harness-engineering/project_definition.md`, `harness-engineering/FAILED_TESTCASE.md`, `harness-engineering/ERROR_LOG.md` va `build.sh` khi cac file nay bat buoc cap nhat.
 
 ## Harness engineering
 
@@ -25,13 +31,14 @@ Day la du an CashTrack: frontend hien tai la React Native/Expo viet bang TypeScr
 - File project definition dung cho ghi chep sau moi prompt la `harness-engineering/project_definition.md`.
 - Sau moi prompt, ghi tiep vao `harness-engineering/project_definition.md` bang tieng Viet gom timestamp, noi dung da thay doi, project definition day du va flow he thong sau thay doi.
 - Sau moi prompt, viet lai cach chay code vao `build.sh`.
-- File ke hoach ngan neu can luu la `harness-engineering/my_plan.md`.
+- File ke hoach ngan bat buoc la `harness-engineering/my_plan.md`; moi lan lap ke hoach truoc khi sua code phai VIET MOI lai file nay, khong append/ghi tiep.
 - File entity list la `harness-engineering/my_entity_list.md`.
 - File REST API contract la `harness-engineering/my_api_contract.md`.
 - File danh sach thieu sot la `harness-engineering/missing.md`.
 - File testcase la `harness-engineering/testcases.md`.
 - Khi testing fail, viet moi log vao `harness-engineering/FAILED_TESTCASE.md`.
 - Khi app loi tren dien thoai hoac Expo Go, viet moi log vao `harness-engineering/ERROR_LOG.md`.
+- Moi bao cao va ke hoach sua loi dua tren anh chup man hinh dien thoai phai duoc luu bang cach VIET MOI lai file `harness-engineering/error_report_via_phone_screenshot.md`.
 - README, CONTRIBUTING, CODE_OF_CONDUCT va GitHub issue template khong duoc xem la harness engineering docs neu nguoi dung khong noi ro.
 
 ## API contract

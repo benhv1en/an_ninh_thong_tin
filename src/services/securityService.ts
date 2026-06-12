@@ -1,4 +1,3 @@
-import * as Crypto from 'expo-crypto';
 import * as forge from 'node-forge';
 
 const ACTIVE_DATA_KEY_BYTES = 32;
@@ -41,6 +40,20 @@ const binaryStringToBytes = (value: string): Uint8Array => {
   return bytes;
 };
 
+const getWebCryptoRandomBytes = (byteCount: number): Uint8Array | null => {
+  if (!globalThis.crypto?.getRandomValues) {
+    return null;
+  }
+
+  const bytes = new Uint8Array(byteCount);
+  globalThis.crypto.getRandomValues(bytes);
+  return bytes;
+};
+
+export const randomBytes = (byteCount: number): Uint8Array => {
+  return getWebCryptoRandomBytes(byteCount) ?? binaryStringToBytes(forge.random.getBytesSync(byteCount));
+};
+
 export const bytesToBase64 = (bytes: Uint8Array): string => {
   return forge.util.encode64(bytesToBinaryString(bytes));
 };
@@ -57,8 +70,27 @@ const bytesToUtf8 = (bytes: Uint8Array): string => {
   return forge.util.decodeUtf8(bytesToBinaryString(bytes));
 };
 
+const utf8ToBinaryString = (value: string): string => {
+  return bytesToBinaryString(utf8ToBytes(value));
+};
+
 export const randomBytesBase64 = (byteCount: number): string => {
-  return bytesToBase64(Crypto.getRandomBytes(byteCount));
+  return bytesToBase64(randomBytes(byteCount));
+};
+
+export const randomUuid = (): string => {
+  const bytes = randomBytes(16);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0'));
+  return [
+    hex.slice(0, 4).join(''),
+    hex.slice(4, 6).join(''),
+    hex.slice(6, 8).join(''),
+    hex.slice(8, 10).join(''),
+    hex.slice(10, 16).join(''),
+  ].join('-');
 };
 
 export const generateDataKey = (): string => {
@@ -105,15 +137,23 @@ export const encryptStringAes256Gcm = async (
   keyBase64: string,
   additionalData?: string
 ): Promise<string> => {
-  const key = await Crypto.AESEncryptionKey.import(keyBase64, 'base64');
-  const sealedData = await Crypto.aesEncryptAsync(utf8ToBytes(plaintext), key, {
-    nonce: { length: GCM_IV_LENGTH },
-    tagLength: GCM_TAG_LENGTH,
-    additionalData: additionalData ? utf8ToBytes(additionalData) : undefined,
-  });
+  const key = bytesToBinaryString(base64ToBytes(keyBase64));
+  const iv = bytesToBinaryString(randomBytes(GCM_IV_LENGTH));
+  const cipher = forge.cipher.createCipher('AES-GCM', key);
 
-  const combined = await sealedData.combined('base64');
-  return combined as string;
+  cipher.start({
+    iv,
+    additionalData: additionalData ? utf8ToBinaryString(additionalData) : undefined,
+    tagLength: GCM_TAG_LENGTH * 8,
+  });
+  cipher.update(forge.util.createBuffer(utf8ToBinaryString(plaintext)));
+
+  if (!cipher.finish()) {
+    throw new Error('Không thể mã hóa dữ liệu.');
+  }
+
+  const combined = iv + cipher.output.getBytes() + cipher.mode.tag.getBytes();
+  return forge.util.encode64(combined);
 };
 
 export const decryptStringAes256Gcm = async (
@@ -121,17 +161,31 @@ export const decryptStringAes256Gcm = async (
   keyBase64: string,
   additionalData?: string
 ): Promise<string> => {
-  const key = await Crypto.AESEncryptionKey.import(keyBase64, 'base64');
-  const sealedData = Crypto.AESSealedData.fromCombined(encryptedBase64, {
-    ivLength: GCM_IV_LENGTH,
-    tagLength: GCM_TAG_LENGTH,
-  });
+  const combined = forge.util.decode64(encryptedBase64);
 
-  const decrypted = await Crypto.aesDecryptAsync(sealedData, key, {
-    additionalData: additionalData ? utf8ToBytes(additionalData) : undefined,
-  });
+  if (combined.length < GCM_IV_LENGTH + GCM_TAG_LENGTH) {
+    throw new Error('Dữ liệu mã hóa không hợp lệ.');
+  }
 
-  return bytesToUtf8(decrypted as Uint8Array);
+  const key = bytesToBinaryString(base64ToBytes(keyBase64));
+  const iv = combined.slice(0, GCM_IV_LENGTH);
+  const tag = combined.slice(combined.length - GCM_TAG_LENGTH);
+  const ciphertext = combined.slice(GCM_IV_LENGTH, combined.length - GCM_TAG_LENGTH);
+  const decipher = forge.cipher.createDecipher('AES-GCM', key);
+
+  decipher.start({
+    iv,
+    additionalData: additionalData ? utf8ToBinaryString(additionalData) : undefined,
+    tagLength: GCM_TAG_LENGTH * 8,
+    tag: forge.util.createBuffer(tag),
+  });
+  decipher.update(forge.util.createBuffer(ciphertext));
+
+  if (!decipher.finish()) {
+    throw new Error('Không thể giải mã dữ liệu.');
+  }
+
+  return bytesToUtf8(binaryStringToBytes(decipher.output.getBytes()));
 };
 
 export const rsaEncryptForServer = (secretBase64: string): string => {

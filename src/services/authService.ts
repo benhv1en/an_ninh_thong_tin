@@ -1,5 +1,4 @@
 import * as bcrypt from 'bcryptjs';
-import * as Crypto from 'expo-crypto';
 import {
   clearActiveDataKey,
   decryptStringAes256Gcm,
@@ -7,7 +6,9 @@ import {
   encryptStringAes256Gcm,
   establishSecureChannel,
   generateDataKey,
+  randomBytes,
   randomBytesBase64,
+  randomUuid,
   setActiveDataKey,
   PASSWORD_KDF_ITERATIONS,
 } from './securityService';
@@ -22,7 +23,7 @@ const configureBcryptRandomFallback = () => {
     return;
   }
 
-  bcrypt.setRandomFallback((length) => Array.from(Crypto.getRandomBytes(length)));
+  bcrypt.setRandomFallback((length) => Array.from(randomBytes(length)));
   bcryptRandomFallbackConfigured = true;
 };
 
@@ -56,7 +57,7 @@ export const authService = {
     const now = new Date().toISOString();
 
     const account: StoredAuthAccount = {
-      id: Crypto.randomUUID(),
+      id: randomUuid(),
       fullName: fullName.trim(),
       email: normalizedEmail,
       passwordHash,
