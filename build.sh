@@ -4,6 +4,9 @@ set -euo pipefail
 # Harness engineering docs are stored in harness-engineering/.
 # Root markdown harness files intentionally kept: AGENTS.md and CHANGELOG.md.
 
+# Kiem tra TypeScript frontend strict mode
+npx tsc --noEmit
+
 # Cach chay frontend React Native/Expo
 # Cai dependency neu chua co: npm install
 
@@ -31,11 +34,16 @@ set -euo pipefail
 # EXPO_PUBLIC_API_BASE_URL=http://localhost:5055 npm run web
 # May that phai dung LAN IP cua may dang chay backend:
 # EXPO_PUBLIC_API_BASE_URL=http://<LAN-IP>:5055 npx expo start --dev-client --lan --clear
+# Neu dung Expo/web qua browser voi origin LAN, dam bao backend CORS cho phep origin do.
+# Neu build Android release goi HTTP, can cau hinh cleartext hoac dung HTTPS.
 # Build APK production bang EAS:
 # npm run build:android
 
 # Cach chay backend C# ASP.NET Core + EF Core SQLite
 dotnet build backend/CashTrack.Api/CashTrack.Api.csproj
+
+# Chay backend API tests tu solution root
+dotnet test
 
 dotnet ef database update --project backend/CashTrack.Api/CashTrack.Api.csproj --startup-project backend/CashTrack.Api/CashTrack.Api.csproj
 
@@ -45,6 +53,8 @@ dotnet ef migrations list --no-build --project backend/CashTrack.Api/CashTrack.A
 # Swagger UI: http://127.0.0.1:5055/swagger
 # Health: http://127.0.0.1:5055/health
 # Transactions: http://127.0.0.1:5055/api/v1/transactions
+# Kiem tra backend dang chay: curl -i http://127.0.0.1:5055/health
+# Test thu cong bang REST Client: backend/CashTrack.Api/CashTrack.Api.http
 dotnet run --project backend/CashTrack.Api/CashTrack.Api.csproj --urls http://127.0.0.1:5055
 
 # Neu dien thoai that can goi backend qua LAN, chay backend bind tat ca interface:

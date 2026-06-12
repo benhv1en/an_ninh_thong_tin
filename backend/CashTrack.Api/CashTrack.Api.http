@@ -1,0 +1,29 @@
+@baseUrl = http://127.0.0.1:5055
+
+### Health check
+GET {{baseUrl}}/health
+
+### List transactions
+GET {{baseUrl}}/api/v1/transactions
+Accept: application/json
+
+### Create transaction
+POST {{baseUrl}}/api/v1/transactions
+Content-Type: application/json
+
+{
+  "amount": 123456,
+  "type": "expense",
+  "category": "food",
+  "description": "REST Client smoke test",
+  "merchant": "Test Merchant",
+  "source": "manual",
+  "externalId": "rest-client-{{$guid}}",
+  "createdAt": "2026-06-12T00:00:00.000Z"
+}
+
+### Validation fail case
+POST {{baseUrl}}/api/v1/transactions
+Content-Type: application/json
+
+{}

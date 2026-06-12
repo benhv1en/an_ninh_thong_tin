@@ -1,9 +1,9 @@
 // Transaction Store using Zustand
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Transaction, TransactionCategory, CATEGORIES } from '../types';
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek } from '../utils/dateUtils';
+import { encryptedTransactionStorage } from '../services/encryptedStorageService';
 
 // Generate simple unique ID since uuid might not work in RN
 const generateId = (): string => {
@@ -38,6 +38,7 @@ interface TransactionState {
   updateTransaction: (id: string, updates: Partial<Transaction>) => void;
   deleteTransaction: (id: string) => void;
   clearAllTransactions: () => void;
+  lockInMemoryData: () => void;
   importTransactions: (transactions: Transaction[]) => void;
   
   // Queries
@@ -155,7 +156,14 @@ export const useTransactionStore = create<TransactionState>()(
         set({ transactions: [] });
       },
 
-      
+      lockInMemoryData: () => {
+        set({
+          transactions: [],
+          isLoading: false,
+          error: null,
+        });
+      },
+
       getTransactionById: (id) => {
         return get().transactions.find(t => t.id === id);
       },
@@ -316,7 +324,7 @@ export const useTransactionStore = create<TransactionState>()(
     }),
     {
       name: 'cashtrack-transactions',
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => encryptedTransactionStorage),
       partialize: (state) => ({
         transactions: state.transactions,
       }),

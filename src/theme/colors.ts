@@ -261,4 +261,4 @@ export const darkTheme = {
   colors,
 };
 
-export type Theme = typeof lightTheme;
+export type Theme = typeof lightTheme | typeof darkTheme;

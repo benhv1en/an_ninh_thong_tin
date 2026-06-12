@@ -5,6 +5,7 @@ import {
     ViewStyle,
     StyleProp,
 } from 'react-native';
+import type { ColorValue } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../theme/ThemeContext';
 import { borderRadius, spacing } from '../../theme';
@@ -13,7 +14,7 @@ interface CardProps {
     children: React.ReactNode;
     style?: StyleProp<ViewStyle>;
     gradient?: boolean;
-    gradientColors?: string[];
+    gradientColors?: readonly [ColorValue, ColorValue, ...ColorValue[]];
     variant?: 'default' | 'elevated' | 'outlined';
     padding?: keyof typeof spacing;
 }

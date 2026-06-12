@@ -1,5 +1,95 @@
 # 📋 Changelog
 
+## 12/06/2026 08:28:29 +0700
+
+### Thay đổi
+- Thêm solution `CashTrack.slnx` để chạy `dotnet test` từ root repository.
+- Thêm test project `backend/CashTrack.Api.Tests` dùng xUnit, `WebApplicationFactory<Program>` và SQLite in-memory cho API smoke tests.
+- Thêm test tối thiểu cho `/health`, `GET /api/v1/transactions`, `POST /api/v1/transactions` và validation fail case với body `{}`.
+- Cập nhật `backend/CashTrack.Api/Program.cs` với `public partial class Program;` để test host truy cập được entrypoint minimal API.
+- Thêm REST Client examples tại `backend/CashTrack.Api/CashTrack.Api.http` cho health, list transaction, create transaction và validation fail case.
+- Cập nhật `build.sh` để chạy `dotnet test` và ghi rõ cách dùng `.http` thủ công.
+
+### Lý do
+- Có kiểm thử backend API tối thiểu chạy qua HTTP pipeline thật, tách database test khỏi SQLite dev bằng SQLite in-memory.
+- Có file `.http` để developer kiểm tra thủ công cùng contract frontend-backend hiện tại.
+
+### Kiểm tra
+- `dotnet test`: pass, 4/4 tests.
+- Chạy backend thật bằng `dotnet run --project backend/CashTrack.Api/CashTrack.Api.csproj --no-build --urls http://127.0.0.1:5055`: pass.
+- Request tương đương `.http` bằng `curl`: `/health` trả `200`, GET transactions trả `200`, POST transaction trả `201`, validation body `{}` trả `400 application/problem+json`.
+
+## 12/06/2026 08:16:07 +0700
+
+### Thay đổi
+- Chẩn đoán lại lỗi nối frontend-backend theo thứ tự yêu cầu: backend runtime, URL base, emulator/device network, CORS, HTTP/HTTPS, route/method, status code, request JSON, response JSON casing, validation và SQLite/migration.
+- Xác định root cause trực tiếp: backend không chạy trên `http://127.0.0.1:5055` tại thời điểm kiểm tra đầu tiên.
+- Khởi động backend để xác nhận API contract hiện khớp khi backend chạy đúng.
+- Không sửa source runtime frontend/backend vì route, method, JSON casing, validation và SQLite migration đều ổn.
+- Cập nhật `harness-engineering/project_definition.md` và `build.sh` theo quy ước sau prompt.
+
+### Lý do
+- Ghi lại kết quả chẩn đoán mới nhất và cách chạy đúng cho local/emulator/device.
+- Làm rõ rủi ro còn lại nằm ở vận hành: backend chưa chạy, CORS LAN cho Expo/web browser, hoặc HTTP cleartext khi build Android release.
+
+### Kiểm tra
+- `curl -i --max-time 3 http://127.0.0.1:5055/health`: fail trước khi chạy backend với `curl (7) Couldn't connect to server`.
+- `dotnet run --project backend/CashTrack.Api/CashTrack.Api.csproj --urls http://127.0.0.1:5055`: chạy được.
+- `curl -i http://127.0.0.1:5055/health`: trả `200 OK` và `{"status":"ok"}`.
+- `curl -i http://127.0.0.1:5055/api/v1/categories`: trả `200 OK`, camelCase.
+- `curl -i http://127.0.0.1:5055/api/v1/transactions`: trả `200 OK`, có `items` và `nextCursor`.
+- `curl -k -i https://127.0.0.1:5055/health`: fail vì backend đang chạy HTTP, không phải HTTPS.
+- CORS preflight từ `http://localhost:8081`: allow; từ `http://192.168.0.108:8081`: chưa allow.
+- `curl -i -X POST ... /api/v1/transactions` với `{}`: trả `400 application/problem+json` với `errors.amount/type/category`.
+- `curl -i -X POST ... /api/v1/notifications/parse`: trả `200 OK`, response camelCase đúng contract.
+- `dotnet ef migrations list --no-build --project backend/CashTrack.Api/CashTrack.Api.csproj --startup-project backend/CashTrack.Api/CashTrack.Api.csproj`: thấy `20260611182529_InitialCreate`.
+- `dotnet build backend/CashTrack.Api/CashTrack.Api.csproj`: pass, 0 warning, 0 error.
+- `npx tsc --noEmit`: pass.
+
+## 12/06/2026 08:13:07 +0700
+
+### Thay đổi
+- Sửa lỗi TypeScript strict mode đã ghi trong `harness-engineering/FAILED_TESTCASE.md`.
+- Cập nhật `src/components/common/Card.tsx` để `gradientColors` có kiểu tuple readonly tối thiểu 2 màu, khớp `expo-linear-gradient`.
+- Cập nhật `src/theme/colors.ts` để `Theme` là union của `lightTheme` và `darkTheme`.
+- Cập nhật `src/store/transactionStore.ts` để dùng `encryptedTransactionStorage` cho persisted transactions và bổ sung `lockInMemoryData`.
+- Viết lại `harness-engineering/FAILED_TESTCASE.md` với trạng thái testcase đã pass.
+
+### Lý do
+- Làm sạch lỗi `npx tsc --noEmit` project-wide để TypeScript strict mode pass.
+- Đồng bộ transaction store với luồng auth/encryption đã có: logout khóa data key và xóa dữ liệu khỏi memory, login/registration hydrate lại sau khi unlock.
+
+### Kiểm tra
+- `npx tsc --noEmit`: pass, exit code 0.
+
+## 12/06/2026 07:54:07 +0700
+
+### Thay đổi
+- Chẩn đoán luồng nối frontend-backend theo thứ tự: backend runtime, URL base, emulator/device network, CORS, HTTP/HTTPS, route/method, status code, request JSON, response JSON casing, validation và SQLite/migration.
+- Xác định root cause vận hành ban đầu: backend không chạy trên `http://127.0.0.1:5055`, khiến request frontend/backend không thể kết nối.
+- Khởi động backend local để kiểm chứng endpoint `/health`, `/api/v1/categories`, `/api/v1/transactions` và `/api/v1/notifications/parse`.
+- Không sửa source runtime frontend/backend vì API adapter, route, JSON casing, validation và SQLite migration hiện đang khớp khi backend chạy đúng.
+- Viết mới `harness-engineering/FAILED_TESTCASE.md` để lưu lỗi `npx tsc --noEmit` theo quy tắc testing của repo.
+- Cập nhật `harness-engineering/project_definition.md` và `build.sh` với kết quả chẩn đoán/cách chạy hiện tại.
+
+### Lý do
+- Làm rõ lỗi kết nối hiện tại nằm ở backend chưa chạy hoặc cấu hình host khi chạy trên thiết bị thật, không phải lệch API contract.
+- Ghi lại rủi ro còn lại: Expo/web qua LAN origin có thể bị CORS chặn, Android release gọi HTTP có thể cần cấu hình cleartext hoặc chuyển sang HTTPS.
+
+### Kiểm tra
+- `curl -i --max-time 3 http://127.0.0.1:5055/health`: fail trước khi chạy backend với `curl (7) Couldn't connect to server`.
+- `dotnet run --project backend/CashTrack.Api/CashTrack.Api.csproj --urls http://127.0.0.1:5055`: chạy được, Kestrel lắng nghe `127.0.0.1:5055`.
+- `curl -i http://127.0.0.1:5055/health`: trả `200 OK` và `{"status":"ok"}`.
+- `curl -i http://127.0.0.1:5055/api/v1/categories`: trả `200 OK`, JSON camelCase.
+- `curl -i http://127.0.0.1:5055/api/v1/transactions`: trả `200 OK`, JSON có `items` và `nextCursor`.
+- `curl -k -i https://127.0.0.1:5055/health`: fail đúng kỳ vọng vì backend hiện chỉ chạy HTTP.
+- CORS preflight từ `http://localhost:8081`: được allow; từ `http://192.168.0.108:8081`: không có `Access-Control-Allow-Origin`.
+- `curl -i -X POST ... /api/v1/transactions` với `{}`: trả `400 application/problem+json` và `errors.amount/type/category`.
+- `curl -i -X POST ... /api/v1/notifications/parse`: trả `200 OK`, response camelCase đúng contract.
+- `dotnet ef migrations list --no-build --project backend/CashTrack.Api/CashTrack.Api.csproj --startup-project backend/CashTrack.Api/CashTrack.Api.csproj`: thấy `20260611182529_InitialCreate`.
+- `dotnet build backend/CashTrack.Api/CashTrack.Api.csproj`: pass, 0 warning, 0 error.
+- `npx tsc --noEmit`: fail bởi lỗi TypeScript có sẵn ngoài phạm vi kết nối API.
+
 ## 12/06/2026 02:38:06 +0700
 
 ### Thay đổi

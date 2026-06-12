@@ -290,3 +290,173 @@
 5. Developer chạy Metro đúng chế độ development build bằng `npx expo start --dev-client --lan --clear` hoặc tunnel nếu LAN bị chặn.
 6. Development build CashTrack trên điện thoại tải JS bundle từ Metro đúng project.
 7. Sau khi bundle load thành công, frontend mới gọi backend qua API adapter; nếu dùng điện thoại thật thì backend cần bind `0.0.0.0:5055` và frontend dùng `EXPO_PUBLIC_API_BASE_URL=http://<LAN-IP>:5055`.
+
+
+# 12/06/2026 07:54:07 +0700
+
+## Nội dung đã thay đổi
+- Chẩn đoán lỗi nối frontend-backend theo đúng thứ tự yêu cầu.
+- Xác định root cause ban đầu: backend chưa chạy trên `http://127.0.0.1:5055`, nên request tới `/health` bị lỗi kết nối.
+- Khởi động backend local để kiểm chứng các lớp còn lại của kết nối.
+- Kiểm tra URL base frontend: Android emulator fallback `http://10.0.2.2:5055`, iOS simulator/web fallback `http://localhost:5055`, máy thật yêu cầu `EXPO_PUBLIC_API_BASE_URL=http://<LAN-IP>:5055`.
+- Kiểm tra CORS, HTTP/HTTPS, route/method, status code, request body JSON, response JSON casing, validation error và SQLite/migration.
+- Không sửa source runtime frontend/backend vì contract và endpoint đang khớp khi backend chạy đúng.
+- Viết mới `harness-engineering/FAILED_TESTCASE.md` vì `npx tsc --noEmit` fail bởi lỗi TypeScript có sẵn ngoài phạm vi kết nối API.
+- Cập nhật `CHANGELOG.md` và `build.sh` theo quy ước dự án.
+
+## Project Definition
+
+### Input Data
+- Frontend React Native/Expo/TypeScript strict mode với API adapter tại `src/services/apiClient.ts`.
+- Backend C# ASP.NET Core minimal API tại `backend/CashTrack.Api`.
+- SQLite database local tại `backend/CashTrack.Api/cashtrack.db`.
+- EF Core migration `20260611182529_InitialCreate`.
+- Runtime URL mặc định theo adapter: emulator Android dùng `10.0.2.2:5055`, simulator/web dùng `localhost:5055`, thiết bị thật dùng LAN IP qua `EXPO_PUBLIC_API_BASE_URL`.
+
+### Methodology
+- Chẩn đoán từ lớp hạ tầng trước tới contract sau: backend runtime, URL base, network emulator/device, CORS, HTTP/HTTPS, route/method, status, JSON request/response, validation và SQLite/migration.
+- Ưu tiên sửa backend hoặc API contract nếu phát hiện lệch contract.
+- Chỉ sửa frontend adapter khi adapter tạo URL, method, body hoặc type sai.
+- Không sửa UI, screen, navigation, theme hoặc store khi lỗi nằm ở runtime/backend/API adapter.
+- Ghi lại failed testcase khi command kiểm thử fail.
+
+### Expected Results
+- Khi backend chưa chạy, frontend sẽ gặp network error vì không có server ở `5055`.
+- Khi backend chạy trên `http://127.0.0.1:5055`, các endpoint chính trả status và JSON đúng contract.
+- Android emulator có thể dùng `http://10.0.2.2:5055`.
+- Thiết bị thật cần backend bind `0.0.0.0:5055` và frontend dùng `EXPO_PUBLIC_API_BASE_URL=http://<LAN-IP>:5055`.
+- Expo/web qua LAN origin có thể cần mở CORS thêm cho origin LAN nếu chạy bằng browser.
+- Android release gọi HTTP có thể cần cấu hình cleartext hoặc chuyển sang HTTPS.
+
+## Flow hệ thống sau thay đổi
+1. Developer chạy migration SQLite bằng `dotnet ef database update`.
+2. Developer chạy backend bằng `dotnet run --project backend/CashTrack.Api/CashTrack.Api.csproj --urls http://127.0.0.1:5055` cho local/emulator, hoặc `--urls http://0.0.0.0:5055` cho thiết bị thật qua LAN.
+3. Frontend resolve API base URL từ `EXPO_PUBLIC_API_BASE_URL` nếu có.
+4. Nếu thiếu biến môi trường, Android emulator dùng `http://10.0.2.2:5055`, iOS simulator/web dùng `http://localhost:5055`.
+5. Frontend gọi backend qua `apiClient`.
+6. Backend trả JSON camelCase hoặc ProblemDetails/ValidationProblem.
+7. SQLite được truy vấn qua EF Core DbContext; migration đã apply nên endpoint metadata và transaction hoạt động.
+8. Nếu chạy Expo/web từ origin LAN chưa nằm trong CORS policy, browser có thể chặn response dù backend vẫn xử lý được request native.
+
+# 12/06/2026 08:13:07 +0700
+
+## Nội dung đã thay đổi
+- Sửa lỗi TypeScript strict mode được ghi trong `harness-engineering/FAILED_TESTCASE.md`.
+- `Card` giờ khai báo `gradientColors` đúng kiểu tuple readonly tối thiểu 2 màu cho `expo-linear-gradient`.
+- `Theme` giờ chấp nhận cả light theme và dark theme thay vì chỉ `typeof lightTheme`.
+- `transactionStore` chuyển persisted transaction storage sang `encryptedTransactionStorage` đã có sẵn.
+- Bổ sung `lockInMemoryData` trong `transactionStore` để `authStore.logout()` có thể khóa dữ liệu transaction trong memory.
+- Chạy `npx tsc --noEmit` thành công.
+
+## Project Definition
+
+### Input Data
+- Source frontend React Native/Expo/TypeScript strict mode.
+- Failed testcase `npx tsc --noEmit` trong `harness-engineering/FAILED_TESTCASE.md`.
+- Component `Card` dùng `expo-linear-gradient`.
+- Theme system gồm `lightTheme`, `darkTheme`, `ThemeProvider`, `getTheme`.
+- Auth flow dùng `authStore.logout()` để clear data key và gọi `transactionStore.lockInMemoryData()`.
+- Encrypted transaction storage có sẵn trong `src/services/encryptedStorageService.ts`.
+
+### Methodology
+- Sửa đúng lỗi compiler, tránh refactor UI hoặc đổi flow không cần thiết.
+- Giữ TypeScript strict mode là chuẩn bắt lỗi.
+- Với gradient, dùng kiểu tuple theo contract thư viện thay vì ép kiểu tùy tiện.
+- Với theme, mở rộng type để phản ánh đúng hai runtime theme đang tồn tại.
+- Với transaction store, nối vào encrypted storage có sẵn để phù hợp auth/encryption behavior: khi chưa unlock data key thì storage không đọc/ghi dữ liệu giao dịch.
+
+### Expected Results
+- `npx tsc --noEmit` pass toàn project.
+- `Card` vẫn render gradient như cũ nhưng type-safe.
+- Theme provider có thể trả light hoặc dark theme mà không lỗi type.
+- Logout không còn gọi method thiếu trong transaction store.
+- Transaction persisted storage đi qua lớp mã hóa có sẵn thay vì AsyncStorage plaintext trực tiếp.
+
+## Flow hệ thống sau thay đổi
+1. App khởi động và hydrate auth state từ `cashtrack-auth`.
+2. Khi người dùng register/login, `authService` mở data key và `authStore` gọi `transactionStore.persist.rehydrate()`.
+3. `transactionStore` đọc persisted transaction qua `encryptedTransactionStorage`; storage chỉ decrypt khi có active data key.
+4. UI đọc transaction state từ Zustand như trước.
+5. Khi logout, `authService.logout()` clear active data key.
+6. `transactionStore.lockInMemoryData()` xóa transaction khỏi memory mà không ghi plaintext transaction ra storage sau khi key đã bị clear.
+7. Theme provider chọn `lightTheme` hoặc `darkTheme`; kiểu `Theme` hiện phản ánh đúng cả hai nhánh.
+8. TypeScript strict compile pass, giúp các bước tích hợp backend/frontend tiếp theo có nền type sạch.
+
+
+# 12/06/2026 08:16:07 +0700
+
+## Nội dung đã thay đổi
+- Chẩn đoán lại lỗi nối frontend-backend theo thứ tự yêu cầu.
+- Root cause trực tiếp vẫn là backend không chạy trên `http://127.0.0.1:5055` tại thời điểm kiểm tra đầu tiên, nên `/health` trả lỗi kết nối.
+- Khởi động backend local để kiểm chứng runtime, route/method, status code, JSON request/response, validation và SQLite migration.
+- Không sửa source runtime frontend/backend vì API contract hiện khớp khi backend chạy đúng.
+- Cập nhật `build.sh` với ghi chú kiểm tra backend, CORS origin LAN và HTTP/HTTPS cho Android release.
+
+## Project Definition
+
+### Input Data
+- Frontend React Native/Expo/TypeScript strict mode với API adapter `src/services/apiClient.ts`.
+- Backend ASP.NET Core tại `backend/CashTrack.Api`, SQLite local và EF Core migration `20260611182529_InitialCreate`.
+- URL base runtime: `EXPO_PUBLIC_API_BASE_URL` nếu có; fallback Android emulator `http://10.0.2.2:5055`, iOS/web `http://localhost:5055`, máy thật dùng LAN IP.
+
+### Methodology
+- Kiểm tra backend runtime trước khi xét contract.
+- Dùng curl để xác nhận HTTP status, response header/body, CORS preflight và HTTPS mismatch.
+- Dùng `dotnet build` và `dotnet ef migrations list` để xác nhận backend build và SQLite migration.
+- Dùng `npx tsc --noEmit` để kiểm tra frontend TypeScript sau các thay đổi sẵn có trong worktree.
+- Không sửa UI, store, theme hoặc adapter khi lỗi không nằm ở contract.
+
+### Expected Results
+- Nếu backend chưa chạy, frontend sẽ báo network error ở lớp fetch.
+- Khi backend chạy trên `http://127.0.0.1:5055`, `/health`, `/api/v1/categories`, `/api/v1/transactions` và `/api/v1/notifications/parse` hoạt động đúng contract.
+- Expo/web từ origin LAN cần CORS tương ứng nếu chạy trong browser.
+- Thiết bị thật cần backend bind `0.0.0.0:5055` và frontend dùng LAN IP.
+
+## Flow hệ thống sau thay đổi
+1. Developer chạy backend hoặc xác nhận backend đang chạy bằng `curl -i http://127.0.0.1:5055/health`.
+2. Frontend resolve base URL từ `EXPO_PUBLIC_API_BASE_URL` hoặc fallback platform.
+3. API adapter gửi request HTTP JSON tới backend.
+4. Backend trả DTO camelCase hoặc ProblemDetails/ValidationProblem.
+5. EF Core dùng SQLite đã apply migration để truy vấn/lưu dữ liệu.
+6. Nếu dùng thiết bị thật, backend phải lắng nghe LAN và firewall phải cho phép port `5055`.
+
+
+# 12/06/2026 08:28:29 +0700
+
+## Nội dung đã thay đổi
+- Thêm solution `.NET` tại `CashTrack.slnx` gồm backend API và backend API test project.
+- Thêm test project `backend/CashTrack.Api.Tests` để kiểm thử backend API tối thiểu.
+- Dùng `WebApplicationFactory<Program>` để chạy pipeline ASP.NET Core thật trong test.
+- Override `AppDbContext` trong test sang SQLite in-memory, gọi `EnsureCreatedAsync` để có schema và seed data từ EF model.
+- Thêm test `/health`, `GET /api/v1/transactions`, `POST /api/v1/transactions` và validation fail case.
+- Thêm REST Client examples tại `backend/CashTrack.Api/CashTrack.Api.http`.
+- Cập nhật `build.sh` với `dotnet test` và hướng dẫn test thủ công `.http`.
+
+## Project Definition
+
+### Input Data
+- Backend ASP.NET Core minimal API trong `backend/CashTrack.Api`.
+- EF Core `AppDbContext`, seed category/bank data và API contract frontend đang dùng.
+- Test request JSON cho transaction create gồm `amount`, `type`, `category`, `description`, `merchant`, `source`, `externalId`, `createdAt`.
+- Validation fail request `{}` để xác nhận ProblemDetails có `errors.amount`, `errors.type`, `errors.category`.
+
+### Methodology
+- Integration test dùng `Microsoft.AspNetCore.Mvc.Testing` để gọi HTTP endpoint qua in-memory test server.
+- Database test dùng SQLite in-memory thay vì EF InMemory để gần SQLite runtime hơn và không đụng `cashtrack.db` dev.
+- Mỗi test tạo factory riêng, reset database bằng `EnsureDeletedAsync`/`EnsureCreatedAsync` trước khi gọi API.
+- `.http` dùng base URL `http://127.0.0.1:5055`, khớp cách chạy backend local.
+
+### Expected Results
+- `dotnet test` từ root repository chạy được qua `CashTrack.slnx`.
+- API smoke tests bắt lỗi route, method, status code, JSON response casing và validation cơ bản.
+- REST Client có thể chạy thủ công sau khi backend local lắng nghe `127.0.0.1:5055`.
+- Frontend có thể kiểm tra lại bằng `apiClient.health()`, `apiClient.listTransactions()` và `apiClient.createTransaction()` với `EXPO_PUBLIC_API_BASE_URL` đúng môi trường.
+
+## Flow hệ thống sau thay đổi
+1. Developer chạy `dotnet test` từ root repository.
+2. Test host khởi tạo backend minimal API qua `WebApplicationFactory<Program>`.
+3. Test services thay `AppDbContext` runtime bằng SQLite in-memory.
+4. Test reset database và seed data từ EF model.
+5. Test gọi `/health`, `/api/v1/transactions` GET/POST và validation fail case qua `HttpClient`.
+6. Developer có thể chạy backend local rồi bấm từng request trong `backend/CashTrack.Api/CashTrack.Api.http`.
+7. Frontend kiểm tra lại bằng API adapter với base URL trỏ về backend local/emulator/device tương ứng.

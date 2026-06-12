@@ -63,3 +63,5 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }))
 app.MapCashTrackApi();
 
 app.Run();
+
+public partial class Program;
